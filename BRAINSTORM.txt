@@ -1,0 +1,222 @@
+Expirations
+
+Allows marking files for future cleaning, or alternative expiration semantics
+
+Common:
+    batch means it has a -b --batch option
+        replace common error scenarios with no-ops,
+        i.e. exit 0 silently, rather than exit 1 with an error message
+    dry-run means it has -n option
+        can print what it will do rather tha  do it
+    auto-initialize means it initializes a .expirations repo
+
+Notes:
+
+auto-initialization seems like an astonishing behavior. Might be better to let people opt in with
+--init, and --de-init flags
+
+target,expires,resetOnTouch
+
+Shadowing
+Duplicate targets are allowed but the most recent one will shadow later ones
+
+*Essential commands*
+
+`Init`
+
+Literally just creates an empty .expirations file in the current directory
+
+batch: no
+dry-run: yes
+
+    expire init
+
+`New`
+
+Adds a new record to the current expirations files
+Exits with a non-zero status if a record for that file already exists
+
+batch: yes
+dry-run: yes
+auto-initialize: yes
+
+    expire new \
+        --reset-on-touch \
+        --duration "15 minutes" \
+        files/my-temp-file
+
+`Check`
+
+Exits with
+0: is tracked and unexpired
+1: is tracked and expired
+2: is untracked, or no repo
+
+batch: no
+dry-run: no
+auto-initialize: no
+
+    expire check files/my-temp-file
+
+`Renew`
+
+Uses pre-existing settings to reinitialize files
+
+batch: yes
+dry-run: yes
+auto-initialize: no
+
+    expire renew files/my-temp-file
+
+`Touch`
+
+Resets the timer for a file if it is reset-on-touch
+
+batch: yes
+dry-run: yes
+auto-initialize: no
+
+    expire touch files/my-temp-file
+
+`Delete`
+
+Deletes the record from the repo, nothing else
+
+batch: yes
+dry-run: yes
+auto-initialize: no
+
+    expire delete files/my-temp-file
+
+`Scan`
+
+Traverses all expired records in the current repo, printing relative paths to stdout
+
+Returns non-zero if there is no current repo
+
+-F --force-recursive recurses into subdirectories to find more repos
+-X --exclude exclude a particular directory
+
+dry-run: no
+auto-initialize: no
+
+    expire scan -r
+
+
+
+
+
+Macro commands
+
+`Rm-If-Expired`
+
+Ensures that if a file is explicitly (tracked) expired, it is removed
+
+batch: yes
+dry-run: yes
+auto-initialize: no
+
+    expire rm-if-expired files/my-temp-file
+
+Equivalent to
+
+    expire check files/my-temp-file
+    if [ $? = 1 ]; then
+        expire delete files/my-temp-file
+        if [ -e files/my-temp-file ]; then
+            rm files/my-temp-file
+        fi
+    fi
+
+`Maintain`
+
+Maintain initially creates a file, and if the file exists and it's expired, it's recreated.
+If maintain exits with a 0 the file always exists.
+It accepts initialization options, to use the first time it initialize the record
+Thereafter, they are ignored
+Prints to stdout
+CREATED: the file was created / recreated, or even the record was initialized
+NOOP: the file exists and is unexpired, no change
+
+batch: no
+dry-run: yes
+auto-initialize: yes
+
+    expire maintain --reset-on-touch --duration "15 minutes" files/my-temp-file
+
+Equivalent to
+
+    expire check file/my-temp-file
+    check_code=$?
+    if [ $check_code = 2 ]; then
+        expire new --reset-on-touch --duration "15 minutes" files/my-temp-file
+        if [ -e files/my-temp-file ]; then
+            rm files/my-temp-file
+            touch files/my-temp-file
+        fi
+        echo CREATE
+    elif [ $check_code = 1 ]; then
+        expire renew files/my-temp-file
+        if [ -e files/my-temp-file ]; then
+            rm files/my-temp-file
+            touch files/my-temp-file
+        fi
+        echo CREATE
+    else # 0
+        echo NOOP
+    fi
+
+
+atime is bad, it's rarely enabled on linux systems
+
+Usages
+
+Retain "session" data for a command line program
+
+    resp=$(expire maintain --reset-on-touch --duration "10 minutes" ".credentials")
+    if [ $resp = "CREATE" ]; then
+        ... prompt user for credentials, and place them in the file ...
+    else
+        # record activity to keep the session alive
+        expire touch ".credentials"
+    fi
+    # perform action
+
+Mark several existing files for expiration in the current directory
+
+    ls *.pdf | xargs expire new --duration "1 day"
+
+Weekly sweep cron job
+
+    # scan a single repo where you want to remove expired files
+    scan | xargs expire rm-if-expired -b
+
+    # recursively scan the home directory and move things to the trash
+    scan -r | xargs send-to-trash
+    scan -r | xargs expire delete -b
+
+Make your system bitch at you about pacnew files
+
+    Automatically add pacnew.sh
+
+        #!/usr/bin/env bash
+        # post-install-pacman.hook
+        find -name '*.pacnew' -exec expire new -b --duration "1 week" '{}' \;
+
+    Script that bitches about old pacnew files:
+
+        #!/usr/bin/env bash
+        # bitch-about-pacnew.sh
+
+        if [[ $1 =~ .pacnew ]]; then
+            push-notification "Do something about this file please: {}"
+            expire renew -b $1
+        fi
+
+    Cron job that bitches about stale pacnew files:
+
+        scan -r | xargs bitch-about-pacnew.sh
+
+Log rotation
+
+    TODO
