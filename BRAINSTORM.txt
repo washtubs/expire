@@ -217,6 +217,10 @@ Make your system bitch at you about pacnew files
 
         scan -r | xargs bitch-about-pacnew.sh
 
+Mark a package as being only needed for a short time period
+
+    TODO
+
 Log rotation
 
     TODO

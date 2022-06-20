@@ -1,21 +1,24 @@
 package expire
 
-import "errors"
-import "log"
+import (
+	"errors"
+	"log"
+	"os"
+	"path/filepath"
+	"regexp"
 
-import "os"
-import "path/filepath"
-import "regexp"
+	"github.com/gobwas/glob"
+)
 
 type NextConfig struct {
 	GlobalConfig
-	Limit      int
-	Expired    bool
-	Delete     bool
-	Exist      bool
-	NoExist    bool
-	MatchGlob  []string
-	MatchRegex []string
+	Limit      int      // Match no more than this many records
+	Expired    bool     // Match expired records only
+	Delete     bool     // Delete the matched records
+	Exist      bool     // Match records corresponding to files that exist
+	NoExist    bool     // Match records corresponding to files that don't exist
+	MatchGlob  []string // Match according to glob patterns
+	MatchRegex []string // Match according to regex patterns
 }
 
 func Next(config *NextConfig) ([]*ExpirationRecord, error) {
@@ -72,12 +75,7 @@ func Next(config *NextConfig) ([]*ExpirationRecord, error) {
 
 		if config.MatchGlob != nil {
 			for _, globMatch := range config.MatchGlob {
-				if fileExists {
-					// skip glob matches, this is not a file
-					break
-				}
-
-				isMatch, err := filepath.Match(globMatch, fileRelToCurrent)
+				isMatch := glob.MustCompile(globMatch).Match(fileRelToCurrent)
 				if err != nil {
 					continue
 				}

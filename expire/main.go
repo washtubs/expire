@@ -12,7 +12,6 @@ import (
 
 func main() {
 	globals := flag.NewFlagSet("", flag.ExitOnError)
-	globals.Bool("dummy", false, "DUMMY FLAG")
 	globals.Parse(os.Args[1:])
 
 	commandStr := globals.Arg(0)
@@ -67,6 +66,10 @@ func AddBatchRunFlags(fs *flag.FlagSet, config *expire.BatchRunConfig) {
 	fs.BoolVar(&config.IsBatchRun, "b", false, "TODO")
 }
 
+func AddGlobalFlags(fs *flag.FlagSet, config *expire.GlobalConfig) {
+	fs.StringVar(&config.Name, "name", "", "The name of the expirations file (defaults to .expirations)")
+}
+
 func ParseTargets(fs *flag.FlagSet, config *expire.TargetConfig) {
 	config.Targets = fs.Args()
 	if len(fs.Args()) > 0 {
@@ -107,6 +110,7 @@ func getInitCommand() Command {
 	flags := func() *flag.FlagSet {
 		fs := flag.NewFlagSet("init", flag.ExitOnError)
 		AddDryRunFlags(fs, &config.DryRunConfig)
+		AddGlobalFlags(fs, &config.GlobalConfig)
 		return fs
 	}
 	parse := func(fs *flag.FlagSet) error {
@@ -137,6 +141,7 @@ func getNewCommand() Command {
 		fs.BoolVar(&config.NoShadow, "no-shadow", false, "TODO")
 		AddDryRunFlags(fs, &config.DryRunConfig)
 		AddBatchRunFlags(fs, &config.BatchRunConfig)
+		AddGlobalFlags(fs, &config.GlobalConfig)
 		return fs
 	}
 	parse := func(fs *flag.FlagSet) error {
@@ -170,6 +175,7 @@ func getTouchCommand() Command {
 		fs := flag.NewFlagSet("touch", flag.ExitOnError)
 		AddDryRunFlags(fs, &config.DryRunConfig)
 		AddBatchRunFlags(fs, &config.BatchRunConfig)
+		AddGlobalFlags(fs, &config.GlobalConfig)
 		return fs
 	}
 	parse := func(fs *flag.FlagSet) error {
@@ -196,6 +202,7 @@ func getRenewCommand() Command {
 		fs := flag.NewFlagSet("renew", flag.ExitOnError)
 		AddDryRunFlags(fs, &config.DryRunConfig)
 		AddBatchRunFlags(fs, &config.BatchRunConfig)
+		AddGlobalFlags(fs, &config.GlobalConfig)
 		return fs
 	}
 	parse := func(fs *flag.FlagSet) error {
@@ -220,6 +227,7 @@ func getCheckCommand() Command {
 
 	flags := func() *flag.FlagSet {
 		fs := flag.NewFlagSet("check", flag.ExitOnError)
+		AddGlobalFlags(fs, &config.GlobalConfig)
 		return fs
 	}
 	parse := func(fs *flag.FlagSet) error {
@@ -251,6 +259,7 @@ func getDeleteCommand() Command {
 		fs.BoolVar(&config.DeInit, "de-init", false, "TODO")
 		AddDryRunFlags(fs, &config.DryRunConfig)
 		AddBatchRunFlags(fs, &config.BatchRunConfig)
+		AddGlobalFlags(fs, &config.GlobalConfig)
 		return fs
 	}
 	parse := func(fs *flag.FlagSet) error {
@@ -284,6 +293,7 @@ func getNextCommand() Command {
 		fs.Var(&arrayFlags{&config.MatchRegex}, "match-regex", "TODO")
 		fs.IntVar(&config.Limit, "limit", 0, "TODO")
 		fs.StringVar(&format, "format", "", "TODO")
+		AddGlobalFlags(fs, &config.GlobalConfig)
 		return fs
 	}
 	parse := func(fs *flag.FlagSet) error {

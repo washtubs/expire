@@ -190,9 +190,3 @@ type TargetConfig struct {
 	Target  string
 	Targets []string
 }
-
-//type ScanConfig struct {
-//GlobalConfig
-//ForceRecursive bool
-//Exclude        []string
-//}
